@@ -14,11 +14,14 @@ def get_scraping_website_page_urls(number_of_pages=1):
     return page_urls
 
 
-def fetch_page_content_with_retry(url):
+def fetch_page_content_with_retry(url, proxy_url=None):
+    proxies = None
+    if proxy_url:
+        proxies = {"http": proxy_url, "https": proxy_url}
     retries = 0
     while retries < MAX_NUMBER_OF_RETRIES:
         try:
-            response = requests.get(url)
+            response = requests.get(url, proxies=proxies)
             response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
             return response
         except requests.RequestException as e:

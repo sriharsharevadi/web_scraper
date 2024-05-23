@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 Base = declarative_base()
 
+
 class ProductORM(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
@@ -13,7 +14,9 @@ class ProductORM(Base):
     product_price = Column(String)
     path_to_image = Column(String)
 
+
 class Product(BaseModel):
     product_title: str
     product_price: str
     path_to_image: str
+    image_url: str

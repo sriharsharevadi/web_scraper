@@ -1,27 +1,60 @@
 import os
-import requests
+import constants
+from helpers import fetch_page_content_with_retry
 
 
 class HTMLProductScraper:
     def __init__(self, product_div):
         self.product_div = product_div
-        self.images_folder = "images"
+
+    def get_product_full_name(self):
+        try:
+            # Locate the product price box division
+            product_price_box_div = self.product_div.find('div', class_=constants.PRODUCT_PRICE_BOX_DIV)
+
+            # Locate the footer division within the price box
+            footer_div = product_price_box_div.find('div', class_=constants.FOOTER_BUTTON_DIV)
+
+            # Locate the add-to-cart division within the footer
+            add_to_cart_div = footer_div.find('div', class_=constants.ADD_TO_CART_DIV)
+
+            # Find the first anchor tag within the add-to-cart division
+            a_tag = add_to_cart_div.find('a')
+
+            # Return the value of the 'data-title' attribute from the anchor tag
+            return a_tag.get('data-title')
+
+        except Exception as e:
+            # Print the exception for debugging purposes
+            print(f"Unable to extract name for a product: {e}")
+            return None
+
+    def get_product_title_name(self):
+        try:
+            # Locate the product details div
+            product_price_box_div = self.product_div.find('div', class_=constants.PRODUCT_DETAILS_DIV)
+
+            # Locate the footer div within the product details div
+            footer_div = product_price_box_div.find('div', class_=constants.PRODUCT_CONTENT_DIV)
+
+            # Locate the add-to-cart div within the footer div
+            add_to_cart_div = footer_div.find('h2', class_=constants.PRODUCT_TITLE_H2)
+
+            # Locate the anchor tag within the add-to-cart div
+            a_tag = add_to_cart_div.find('a')
+
+            # Return the text of the anchor tag (the product title)
+            return a_tag.get_text()
+
+        except Exception as e:
+            # Print the exception for debugging purposes
+            print(f"Unable to extract name for a product: {e}")
+            return None
 
     def get_product_name(self):
-        try:
-            # Find the div with class "mf-product-content"
-            product_content_div = self.product_div.find('div', class_='mf-product-content')
-
-            # Within this div, find the h2 tag with class "woo-loop-product__title"
-            short_description_div = product_content_div.find('div', class_='woocommerce-product-details__short-description')
-
-            # Within this h2 tag, find the <a> tag
-            p_tag_data = short_description_div.find('p')
-
-            # Extract the text content from the <a> tag
-            return p_tag_data.get_text()
-        except Exception:
-            print("Unable to extract name for a product")
+        if constants.USE_PRODUCT_FULL_NAME:
+            return self.get_product_full_name()
+        return self.get_product_title_name()
 
     def get_product_price(self):
         try:
@@ -55,12 +88,33 @@ class HTMLProductScraper:
             print(f"Unable to get image for product {self.get_product_name()}")
 
     def download_image(self, image_url):
+        """
+        Downloads an image from the provided URL and saves it to the local filesystem.
+
+        Args:
+            image_url (str): The URL of the image to be downloaded.
+
+        Returns:
+            str: The file path of the downloaded image if successful, None otherwise.
+        """
         try:
-            response = requests.get(image_url, timeout=10)
+            # Fetch the content of the image URL with retries
+            response = fetch_page_content_with_retry(image_url)
+
+            # Check if the request was successful
             if response.status_code == 200:
-                filename = os.path.join(self.images_folder, image_url.split('/')[-1])
+                # Construct the file path using the image folder and the image name from the URL
+                filename = os.path.join(constants.IMAGES_FOLDER, image_url.split('/')[-1])
+
+                # Open the file in write-binary mode and write the image content
                 with open(filename, 'wb') as f:
                     f.write(response.content)
+
+                # Return the file path of the downloaded image
                 return filename
+
         except Exception as e:
+            # Print the exception message for debugging purposes
             print(f"Error downloading {image_url}: {e}")
+            return None
+
